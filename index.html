@@ -1,78 +1,49 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
   <title>Edit JSON Data</title>
 </head>
 <body>
-  <h2>Edit Name in data.json</h2>
-  <input type="text" id="nameInput" />
-  <button onclick="saveData()">Save</button>
+  <h2>Edit TFN in data.json</h2>
+  <input type="text" id="nameInput" placeholder="Enter new TFN" />
+  <button onclick="updateData()">Save</button>
   <p id="status"></p>
 
   <script>
-    const repoOwner = "sigmausdts";              //  your GitHub username
-    const repoName = "Win";            //  your repo name
-    const filePath = "data.json";                //  JSON file path in repo root
-    const branch = "main";                       //  branch
-
-    // Replace this with your real GitHub Personal Access Token
-    const token = "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";
-
-    let fileSha = "";
-
-    // Load current data
-    fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}?ref=${branch}`, {
-      headers: {
-        "Authorization": `token ${token}`
+    async function updateData() {
+      const newValue = document.getElementById("nameInput").value;
+      if (!newValue) {
+        document.getElementById("status").innerText = "⚠ Please enter a value.";
+        return;
       }
-    })
-      .then(response => response.json())
-      .then(file => {
-        fileSha = file.sha; // needed for update
-        const content = JSON.parse(atob(file.content));
-        document.getElementById("nameInput").value = content.name;
-      });
 
-    function saveData() {
-      const newName = document.getElementById("nameInput").value;
-      const newData = { tfn: newName };
-      const base64Data = btoa(JSON.stringify(newData, null, 2));
+      const workflowUrl = "https://api.github.com/repos/sigmausdts/popup-tfn-editor-001/actions/workflows/send-dispatch.yml/dispatches";
 
-      fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`, {
-        method: "PUT",
-        headers: {
-          "Authorization": `token ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          message: "Update data.json via edit.html",
-          content: base64Data,
-          sha: fileSha,
-          branch: branch
-        })
-      })
-      .then(res => res.json())
-      .then(result => {
-        if (result.content) {
-          document.getElementById("status").innerText = " Updated successfully!";
-        } else {
-          document.getElementById("status").innerText = " Error: " + JSON.stringify(result);
+      const token = ""; //  No token in browser — uses GitHub Actions only
+
+      const body = {
+        ref: "main", // branch in Repo A
+        inputs: {
+          newData: JSON.stringify({ tfn: newValue })
         }
-      })
-      .catch(err => {
-        document.getElementById("status").innerText = " Error: " + err;
+      };
+
+      const res = await fetch(workflowUrl, {
+        method: "POST",
+        headers: {
+          "Accept": "application/vnd.github+json",
+          "Authorization": "token " + token //  no token here
+        },
+        body: JSON.stringify(body)
       });
+
+      if (res.ok) {
+        document.getElementById("status").innerText = " Update triggered!";
+      } else {
+        document.getElementById("status").innerText = " Error: " + res.status;
+      }
     }
   </script>
-  <script>
-  document.addEventListener("contextmenu", e => e.preventDefault()); // disable right click
-  document.addEventListener("keydown", e => {
-    if (e.ctrlKey && (e.key === "u" || e.key === "c" || e.key === "s")) {
-      e.preventDefault(); // disable Ctrl+U (view source), Ctrl+C, Ctrl+S
-    }
-  });
-</script>
-
 </body>
 </html>
